@@ -1,4 +1,5 @@
-﻿// MathLibrary.h - Contains declarations of math functions
+// MathLibrary.h - Contains declarations of math functions
+// Author: Daniel
 #pragma once
 
 #ifdef MATHLIBRARY_EXPORTS
@@ -16,8 +17,8 @@ MATHLIBRARY_API typedef struct Rect {
 } Rect;
 
 MATHLIBRARY_API typedef struct Point_And_ID {
-	Point point;
-	int id;  // this id is a unique number that references a rect/agent in the client
+	Point point;	// this point characterizes the position of the agent
+	int id;			// this id is a unique number that references a rect/agent in the client
 } Point_And_ID;
 
 MATHLIBRARY_API typedef struct TileCoord
