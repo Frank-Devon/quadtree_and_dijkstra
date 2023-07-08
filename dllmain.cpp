@@ -1,3 +1,5 @@
+// Author: Daniel
+
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,8 +26,6 @@ bool point_in_rect(Rect* r, Point p)
 
 bool collide_rect(Rect* r1, Rect* r2)
 {
-	//r1 = 1,1,2,2
-	//r2 = 3,1,2,2
 	bool b1 = r1->x + r1->width < r2->x;  //right edge > other left edge
 	bool b2 = r1->x > r2->x + r2->width;
 	bool b3 = r1->y + r1->height < r2->y;
@@ -45,14 +45,12 @@ struct quadtree { // This structure is named "myDataType"
 	int iDepth;
 };
 
-//typedef struct Point_And_ID Point_And_ID;
-
-// globals 
-Point_And_ID g_data[1000]; // large enough for virtually all cases
-int g_data_count = 0; // how many point_and_id structs are in use in the statically allocated array.
+// GLOBALS
+Point_And_ID g_data[1000];			// Point characterizes the space of an entity, the ID points to it
+int g_data_count = 0;				// how many point_and_id structs are in use in the statically allocated array.
 quadtree qt_main;
-int num_points = 0;  // amount of points successfully queried
-Point_And_ID points_queried[1000];  // CAREFUL, the intended queries are supposed to yield small amount of points... too much and array will overflow
+int num_points = 0;					// amount of points successfully queried
+Point_And_ID points_queried[1000];  // result of a query is stored here
 
 void quadtree_init(quadtree* qt, Rect boundary, int depth)
 {
@@ -215,13 +213,13 @@ typedef struct Tile Tile;
 typedef struct Edge Edge;
 typedef struct Heap Heap;
 
-typedef struct Edge
+struct Edge
 {
 	Tile* vertex;  // if this vertex is null edge is non existant
 	double cost;  //
 };
 
-typedef struct Tile
+struct Tile
 {
 	// cost to enter tile from adjacent tile without considering other factors. the actual cost
 	// from one vertex to another is stored in the edges field struct.
@@ -239,7 +237,7 @@ typedef struct Tile
 	//incoming edges... Edge* edges_incoming[8];
 };
 
-typedef struct Graph2D
+struct Graph2D
 {
 	Tile* tiles;  // pointer to 2d array of tiles
 	Tile** tiles_dirty;  // pointer to tiles that need to be refreshed
@@ -249,7 +247,7 @@ typedef struct Graph2D
 	int tiles_dirty_count;
 };
 
-typedef struct Heap
+struct Heap
 {
 	void* (*compare_nodes)(void*, void*);  // returns void* to highest priority node
 	int (*compare_nodes_index)(Heap*, int, int);  // gets index of highest priority node
@@ -258,6 +256,8 @@ typedef struct Heap
 	int count;  // currently used elements/nodes in the array
 	//int element_size;  // probably not needed !!!!!!!!!!!!!
 };
+
+void HeapSwapNodes(Heap* heap, int index_0, int index_1);
 
 // if tiles have same g_cost, return the tile_0. Could be improved.
 void* compare_tiles_get_min_g_cost(void* tile_0, void* tile_1)
@@ -274,11 +274,6 @@ void* compare_tiles_get_min_g_cost(void* tile_0, void* tile_1)
 
 int compare_tiles_get_min_g_cost_index(Heap* heap, int index_0, int index_1)
 {
-	// both indexes must be valid
-	// no error checking needed?
-	//return ((Tile*)*(heap->array + index_0))->g_cost <= ((Tile*)*(heap->array + index_1))->g_cost ?
-	//	index_0 : index_1;
-
 	if (index_0 != -1 && index_1 != -1)
 		return ((Tile*)*(heap->array + index_0))->g_cost <= ((Tile*)*(heap->array + index_1))->g_cost ?
 		index_0 : index_1;
@@ -313,7 +308,7 @@ Heap* HeapCreate(int heap_size, void* (*compare_nodes)(void*, void*), int (*comp
 	return heap;
 }
 
-int HeapFree1(Heap* heap)
+void HeapFree(Heap* heap)
 {
 	free(heap->array);
 }
@@ -360,7 +355,6 @@ void* HeapParent(Heap* heap, int index)
 
 int HeapParentIndex(Heap* heap, int index)
 {
-	// too much error checking?
 	if ( index >= heap->count || index <= 0)
 	{
 		return -1;  //invalid
@@ -423,7 +417,7 @@ int HeapRightChildIndex(Heap* heap, int index)
 	}
 }
 
-int HeapifyUp(Heap* heap, int index)
+void HeapifyUp(Heap* heap, int index)
 {
 	void* parent = HeapParent(heap, index);
 	void* node = HeapNodeAtIndex(heap, index);
@@ -432,24 +426,24 @@ int HeapifyUp(Heap* heap, int index)
 	if (parent == NULL || node == NULL)
 	{
 		//printf("Heap: parent or node invalid\n");
-		return 1;
+		return;
 	}
 	void* result = heap->compare_nodes(parent, node); // compare nodes returns higher priority?
 	if (result == parent)
 	{
 		// heap property is still valid
-		return 1;
+		return;
 	}
 	else
 	{
 
 		HeapSwapNodes(heap, parent_index, index);
 		HeapifyUp(heap, (index - 1) / 2);
-		return 1;
+		return;
 	}
 }
 
-int HeapifyDown(Heap* heap, int index)
+void HeapifyDown(Heap* heap, int index)
 {
 	void* node_current = HeapNodeAtIndex(heap, index);
 	void* node_right_child = HeapRightChild(heap, index);
@@ -457,10 +451,10 @@ int HeapifyDown(Heap* heap, int index)
 	int right_child_index = HeapRightChildIndex(heap, index);
 	int left_child_index = HeapLeftChildIndex(heap, index);
 
-	if (heap == NULL)
-	{
-		return 0; //heap ptr is bad
-	}
+	//if (heap == NULL)
+	//{
+	//	return 0; //heap ptr is bad
+	//}
 	//// get highest priority child
 	//void* node_child_highest_priority = heap->compare_nodes(node_left_child, node_right_child);
 	//int index_child_highest_priority = HeapIndexOfNode(heap, node_child_highest_priority);  // don't use this func?
@@ -488,7 +482,7 @@ int HeapifyDown(Heap* heap, int index)
 	}
 }
 
-int HeapSwapNodes(Heap* heap, int index_0, int index_1)
+void HeapSwapNodes(Heap* heap, int index_0, int index_1)
 {
 	void* temp = *(heap->array + index_0);
 	*(heap->array + index_0) = *(heap->array + index_1);
@@ -565,7 +559,11 @@ Tile* GraphGetVertex(Graph2D* graph, int x, int y)
 Graph2D* DijkstraCreateGraph(int width, int height, Tile* tiles_arg)
 {
 	Graph2D* graph;
-	graph = (Graph2D*)malloc(sizeof(Graph2D)); // probably should check for null
+	graph = (Graph2D*)malloc(sizeof(Graph2D));
+	if (graph == NULL)
+	{
+		return NULL;
+	}
 	graph->tiles = tiles_arg;
 	// does heap need to be bigger than the maximum number of vertexs? no
 	graph->width = width;
@@ -635,8 +633,6 @@ void DijkstraFindEdges(Graph2D* graph, int x, int y)
 	}
 	Tile* tile_end = NULL;
 	Tile* tile_diagonal = NULL;  // used as a temp variable to check for tiles that may hinder diagonal movement
-	int ydiff;
-	int xdiff;
 	double modifier;
 	// origin is top left
 	int x_offsets[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
@@ -801,7 +797,7 @@ int DijkstraFindPathsAPI(Graph2D* graph, int x_end, int y_end)
 		}
 		current->set = Visited;
 	}
-	HeapFree1(heap);
+	HeapFree(heap);
 
 	//printf("insertions = %d\n", insert_count);
 	// need to free heap?
